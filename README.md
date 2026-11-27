@@ -93,6 +93,7 @@ From [`inference/catalog/models.json`](inference/catalog/models.json): 23 entrie
 
 - **Also supported, dense:** Qwen 3.5 4B, Qwen 3.8 27B, Muse Glimmer 30B, Gemma 4 12B, LFM 3 1.7B, Nemotron 3.5 Bolt E4B.
 - **Disabled today:** Nemotron 3 Ultra 550B-A55B (its MXFP4 serving path is unfinished), GLM 5.2 753B-A40B, Qwen 3.5 122B-A10B, Nemotron 3 Super 120B-A12B, Laguna S 2.1.
+- **Quantisations.** Besides GGUF K- and IQ-quants, the catalog lists NVFP4 variants (Qwen 3.8 Flash Next, GLM-5.3 Flash) and MXFP4 (DeepSeek V4.1 Flash, plus two disabled entries).
 
 ## Hardware
 
