@@ -17,7 +17,7 @@
 > [!IMPORTANT]
 > **Today:** this repository is identical to upstream `magnitudedev/magnitude` at commit `90a4db1`, except for this README.
 >
-> **Not done yet:** no build, no binaries, no run on our hardware.
+> **Not done yet:** no build, no binaries, and the engine has not been run on our hardware. We have measured one disk (see the roadmap).
 >
 > **How to read this page:** a statement is either *read in the source* (with the file) or an *upstream claim* we have not reproduced.
 >
@@ -164,17 +164,18 @@ These are plans, not features.
 
 **Now: hygiene**
 - [ ] Mark modified files, as Apache-2.0 §4(b) asks, and add a `NOTICE` crediting Magnitude AI Inc. (good practice: §4(d) only passes on a NOTICE the work already has, and the tree has none). `LICENSE` names Magnitude AI Inc. as the holder.
-- [ ] Disable the upstream-only workflows in this fork (release, Docker Hub, landing-page sync). The tree carries 17 upstream workflows.
+- [x] GitHub Actions is switched off on this fork (2026-11-27). The tree carries 17 upstream workflows, aimed at upstream's infrastructure and secrets; the files stay, so syncing with upstream stays clean.
 
 **1 · Prove it, using upstream's build**
 - [ ] The first deliverable above: one model, one machine, one reproducible benchmark with a quality check. The `mrig` harness lists `bench` and `kl` instruments; we have not run them.
+- **Measured so far, not the engine:** reading an 81 GiB model file from one DGX Spark's internal NVMe with direct 8 MiB reads gave 7.8 to 9.9 GB/s with one stream and 12.7 GB/s with four, with the machine under its normal load (sequential reads). Upstream reports 10.1 to 10.2 GB/s for a GB10 ([`probe.rs`](inference/seismic/io/src/disk/probe.rs)).
 - [ ] Run it with the update check isolated (the `MAGNITUDE_DEV_DATA_DIR` switch above) and look at what actually leaves the machine, so the switch is confirmed on the wire.
 - [ ] Measure time to first token on long prompts: streaming experts from SSD may not fit the timeouts a gateway expects.
 
 **2 · Decide how to live next to upstream**
-- [ ] The options: consume upstream's releases from a thin integration-and-benchmark repo and send patches upstream (an opt-out for the hardware summary is an obvious first one), or diverge. Upstream is committing daily and has a release pipeline of its own, which is the cost of diverging. The decision follows step 1.
+- [x] **Decided, 2026-11-27: track upstream.** This fork stays a mirror plus this README; we send general fixes upstream (an opt-out for the hardware summary is an obvious first one) and diverge only if a measured result needs a change upstream will not take. When syncing, `README.md` stays ours and everything else comes from upstream. We will revisit this after step 1.
 
-**3 · Make it ours, only if step 2 says diverge**
+**3 · Make it ours, only if step 1 shows a need upstream will not meet**
 - [ ] Our own release and signing pipeline. Upstream's image is built from a release payload checked against a manifest by size and checksum, by workflows that need upstream's secrets and build "without attestations".
 - [ ] Our own installer origin, update origin and release base URL; our own Hugging Face OAuth client; the hardware summary removed or sent only to a server we run.
 - [ ] Rename only what a user sees.
