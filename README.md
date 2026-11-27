@@ -51,22 +51,23 @@ Upstream designed the engine for that case. We want to find out whether it holds
 
 ```mermaid
 flowchart LR
+  subgraph unified["Unified memory<br/>Metal, integrated CUDA such as GB10"]
+    direction LR
+    S2["NVMe SSD<br/>model file"] -- "direct reads" --> G2["Expert bank<br/>shared memory"]
+  end
   subgraph discrete["Discrete GPU"]
     direction LR
     S1["NVMe SSD<br/>model file"] -- "direct reads" --> R1["Host tier<br/>RAM"]
     R1 -- "promote" --> G1["Expert bank<br/>GPU memory"]
   end
-  subgraph unified["Unified memory<br/>Metal, integrated CUDA such as GB10"]
-    direction LR
-    S2["NVMe SSD<br/>model file"] -- "direct reads" --> G2["Expert bank<br/>shared memory"]
-  end
+  discrete ~~~ unified
 ```
 
 An app or a gateway talks to the engine over the OpenAI or Anthropic API on one port.
 
 ### Read in the code
 
-- **One ranking, two layouts.** The expert bank keeps what one ranking says (expected reuse, measured from completed steps). **On a discrete GPU** every miss reaches a host tier in RAM first, which fills from the model file; the device's steps serve it from the tier's records in place (some are computed on the CPU), and the host promotes, in the background, the experts the ranking keeps. **On unified memory there is no host tier:** the host lands a file miss straight into a bank record. The rule is in the code: a device whose shared memory lies in its own device memory takes the unified layout, and the code names Metal and "an integrated CUDA device's such as GB10's" as that case; a test builds a recorded GB10 report and asserts it. So by the code's rule a DGX Spark has **two tiers, not three**: shared memory and NVMe. We have not run it. ([`layout.rs`](inference/engine/executor/src/planning/bank/layout.rs), [`qualification.rs`](inference/engine/executor/src/platform/qualification.rs), [`topology/src/tests.rs`](inference/seismic/topology/src/tests.rs)) ([`directory/mod.rs`](inference/engine/executor/src/experts/directory/mod.rs), [`experts/mod.rs`](inference/engine/executor/src/experts/mod.rs))
+- **One ranking, two layouts.** The expert bank keeps what one ranking says (expected reuse, measured from completed steps). **On a discrete GPU** every miss reaches a host tier in RAM first, which fills from the model file; the device's steps serve it from the tier's records in place (some are computed on the CPU), and the host promotes, in the background, the experts the ranking keeps. **On unified memory there is no host tier:** the host lands a file miss straight into a bank record. The rule is in the code: a device whose shared memory lies in its own device memory takes the unified layout, and the code names Metal and "an integrated CUDA device's such as GB10's" as that case; a test builds a recorded GB10 report and asserts it. So by the code's rule a DGX Spark has **two tiers, not three**: shared memory and NVMe. We have not run it. ([`directory/mod.rs`](inference/engine/executor/src/experts/directory/mod.rs), [`experts/mod.rs`](inference/engine/executor/src/experts/mod.rs), [`layout.rs`](inference/engine/executor/src/planning/bank/layout.rs), [`qualification.rs`](inference/engine/executor/src/platform/qualification.rs), [`topology/src/tests.rs`](inference/seismic/topology/src/tests.rs))
 - **Reads can skip the OS page cache.** Uncached direct reads: `O_DIRECT` on Linux, `F_NOCACHE` on macOS, `FILE_FLAG_NO_BUFFERING` on Windows. Each reader picks a cache policy, and a read falls back to the cache when a filesystem refuses direct IO. On Linux a single `io_uring` thread does the batching when the kernel supports it; otherwise a `pread` worker pool does. ([`seismic/io`](inference/seismic/io/src/lib.rs), [`scheduler/engine.rs`](inference/seismic/io/src/scheduler/engine.rs))
 - **Reads ahead of use.** The prefetcher acts on a lookahead router's hint or on the route of rows that are ahead, and reads from the file into staging or the host tier. ([`prefetch.rs`](inference/engine/executor/src/experts/watcher/prefetch.rs))
 - **No direct SSD-to-GPU path, no cross-node path.** Storage-to-VRAM DMA and peer RDMA are declared as link kinds marked "future extension"; neither is implemented. ([`fabric.rs`](inference/seismic/io/src/fabric.rs))
